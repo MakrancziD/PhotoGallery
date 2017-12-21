@@ -3,13 +3,18 @@ package com.example.makra.photogallery;
 import android.net.Uri;
 import android.util.Log;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
+import com.google.gson.reflect.TypeToken;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Type;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
@@ -23,6 +28,7 @@ public class FlickrFetchr {
 
     private static final String TAG = "FlickrFetchr";
     private static final String API_KEY = "3e79b49226669165906e98acd629c629";
+    private Gson gson = new Gson();
 
     public byte[] getUrlBytes(String urlSpec) throws IOException {
         URL url = new URL(urlSpec);
@@ -66,33 +72,24 @@ public class FlickrFetchr {
                     .build().toString();
             String jsonString = getUrlString(url);
             Log.i(TAG, "Received JSON: " + jsonString);
-            JSONObject jsonBody = new JSONObject(jsonString);
+
+            JsonParser parser = new JsonParser();
+            JsonElement jsonBody = parser.parse(jsonString);
             parseItems(items, jsonBody);
         } catch(IOException ioe) {
             Log.e(TAG, "Failed to fetch items", ioe);
-        } catch (JSONException je) {
+        } catch (JsonParseException je) {
             Log.e(TAG, "Failed to parse JSON", je);
         }
         return items;
     }
 
-    private void parseItems(List<GalleryItem> items, JSONObject jsonBody) throws IOException, JSONException {
-        JSONObject photosJsonObject = jsonBody.getJSONObject("photos");
-        JSONArray photoJsonArray = photosJsonObject.getJSONArray("photo");
+    private void parseItems(List<GalleryItem> items, JsonElement jsonBody) throws IOException, JsonParseException {
 
-        for (int i = 0; i < photoJsonArray.length(); i++) {
-            JSONObject photoJsonObject = photoJsonArray.getJSONObject(i);
-
-            GalleryItem item = new GalleryItem();
-            item.setId(photoJsonObject.getString("id"));
-            item.setCaption(photoJsonObject.getString("title"));
-
-            if(!photoJsonObject.has("url_s")) {
-                continue;
-            }
-
-            item.setUrl(photoJsonObject.getString("url_s"));
-            items.add(item);
-        }
+        JsonObject root = jsonBody.getAsJsonObject();
+        JsonArray photosJsonArray = root.get("photos").getAsJsonObject().getAsJsonArray("photo").getAsJsonArray();
+        Type listType = new TypeToken<List<GalleryItem>>(){}.getType();
+        List<GalleryItem> itemsGson = gson.fromJson(photosJsonArray, listType);
+        items.addAll(itemsGson);
     }
 }

@@ -1,12 +1,17 @@
 package com.example.makra.photogallery;
 
+import com.google.gson.annotations.SerializedName;
+
 /**
  * Created by makra on 2017. 12. 21..
  */
 
 public class GalleryItem {
+    @SerializedName("title")
     private String mCaption;
+    @SerializedName("id")
     private String mId;
+    @SerializedName("url_s")
     private String mUrl;
 
     public String getCaption() {
