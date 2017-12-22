@@ -26,6 +26,8 @@ public class PhotoGalleryFragment extends Fragment {
 
     private RecyclerView mPhotoResyclerView;
     private List<GalleryItem> mItems = new ArrayList<>();
+    private int mSpanCount = 3;
+    private int mLatestPage = 1;
 
     public static PhotoGalleryFragment newInstance() {
         return new PhotoGalleryFragment();
@@ -35,7 +37,7 @@ public class PhotoGalleryFragment extends Fragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setRetainInstance(true);
-        new FetchItemsTask().execute();
+        new FetchItemsTask().execute(mLatestPage);
     }
 
     @Nullable
@@ -44,7 +46,22 @@ public class PhotoGalleryFragment extends Fragment {
         View v = inflater.inflate(R.layout.fragment_photo_gallery, container, false);
 
         mPhotoResyclerView = (RecyclerView) v.findViewById(R.id.photo_recycler_view);
-        mPhotoResyclerView.setLayoutManager(new GridLayoutManager(getActivity(), 3));
+        RecyclerView.LayoutManager layoutManager = new GridLayoutManager(getActivity(), mSpanCount);
+        mPhotoResyclerView.setLayoutManager(layoutManager);
+        mPhotoResyclerView.setOnScrollListener(new RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(RecyclerView recyclerView, int dx, int dy) {
+                super.onScrolled(recyclerView, dx, dy);
+
+                if(!mPhotoResyclerView.canScrollVertically(1)) {
+                    new FetchItemsTask().execute(mLatestPage++);
+                }
+
+//                if(dy>=(mPhotoResyclerView.getAdapter().getItemCount()/mSpanCount)) {
+//                    new FetchItemsTask().execute(mLatestPage++);
+//                }
+            }
+        });
 
         setupAdapter();
 
@@ -96,16 +113,16 @@ public class PhotoGalleryFragment extends Fragment {
         }
     }
 
-    private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>> {
+    private class FetchItemsTask extends AsyncTask<Integer, Void, List<GalleryItem>> {
 
         @Override
-        protected List<GalleryItem> doInBackground(Void... voids) {
-            return new FlickrFetchr().fetchItems();
+        protected List<GalleryItem> doInBackground(Integer... integers) {
+            return new FlickrFetchr().fetchItems(integers[0]);
         }
 
         @Override
         protected void onPostExecute(List<GalleryItem> galleryItems) {
-            mItems = galleryItems;
+            mItems.addAll(galleryItems);
             setupAdapter();
         }
     }
