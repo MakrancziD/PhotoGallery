@@ -1,5 +1,7 @@
 package com.example.makra.photogallery;
 
+import android.app.ProgressDialog;
+import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -18,6 +20,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -101,7 +104,7 @@ public class PhotoGalleryFragment extends Fragment {
         super.onCreateOptionsMenu(menu, inflater);
         inflater.inflate(R.menu.fragmnet_photo_gallery, menu);
 
-        MenuItem searchItem = menu.findItem(R.id.menu_item_search);
+        final MenuItem searchItem = menu.findItem(R.id.menu_item_search);
         final SearchView searchView = (SearchView) searchItem.getActionView();
 
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
@@ -109,6 +112,11 @@ public class PhotoGalleryFragment extends Fragment {
             public boolean onQueryTextSubmit(String query) {
                 Log.d(TAG, "QueryTextSubmit: "+query);
                 QueryPreferences.setStoredQuery(getActivity(), query);
+                InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+                assert imm != null;
+                imm.hideSoftInputFromWindow(searchView.getWindowToken(), 0);
+                searchView.onActionViewCollapsed();
+                clearRecyclerView();
                 updateItems();
                 return true;
             }
@@ -127,6 +135,11 @@ public class PhotoGalleryFragment extends Fragment {
                 searchView.setQuery(query, false);
             }
         });
+    }
+
+    private void clearRecyclerView() {
+        PhotoAdapter adapter = (PhotoAdapter) mPhotoResyclerView.getAdapter();
+        adapter.clear();
     }
 
     @Override
@@ -186,13 +199,26 @@ public class PhotoGalleryFragment extends Fragment {
         public int getItemCount() {
             return mGalleryItems.size();
         }
+
+        public void clear() {
+            mGalleryItems.clear();
+            notifyDataSetChanged();
+        }
     }
 
     private class FetchItemsTask extends AsyncTask<Void, Void, List<GalleryItem>> {
         private String mQuery;
 
+        private ProgressDialog dialog = new ProgressDialog(getActivity());
+
         public FetchItemsTask(String query) {
             mQuery = query;
+        }
+
+        @Override
+        protected void onPreExecute() {
+            dialog.setMessage(getString(R.string.loading_dialog));
+            dialog.show();
         }
 
         @Override
@@ -208,7 +234,10 @@ public class PhotoGalleryFragment extends Fragment {
         @Override
         protected void onPostExecute(List<GalleryItem> galleryItems) {
             mItems = galleryItems;
+            dialog.dismiss();
             setupAdapter();
         }
+
+
     }
 }
